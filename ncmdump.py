@@ -13,13 +13,18 @@ import os
 from Crypto.Cipher import AES
 from mutagen import mp3, flac, id3
 
+
+def unpad(s):
+    return s[0:-(s[-1] if type(s[-1]) == int else ord(s[-1]))]
+
+
 def dump(file_path):
 
+    global audio
     core_key = binascii.a2b_hex("687A4852416D736F356B496E62617857")
     meta_key = binascii.a2b_hex("2331346C6A6B5F215C5D2630553C2728")
-    unpad = lambda s : s[0:-(s[-1] if type(s[-1]) == int else ord(s[-1]))]
 
-    f = open(file_path,'rb')
+    f = open(file_path, 'rb')
 
     # magic header
     header = f.read(8)
@@ -60,7 +65,7 @@ def dump(file_path):
 
     # crc32
     crc32 = f.read(4)
-    crc32 = struct.unpack('<I', bytes(crc32))[0]
+    struct.unpack('<I', bytes(crc32))[0]
 
     # album cover
     f.seek(5, 1)
@@ -70,8 +75,8 @@ def dump(file_path):
 
     # media data
     file_name = meta_data['artist'][0][0] + ' - ' + meta_data['musicName'] + '.' + meta_data['format']
-    music_path = os.path.join(os.path.split(file_path)[0],file_name)
-    m = open(music_path,'wb')
+    music_path = os.path.join(os.path.split(file_path)[0], file_name)
+    m = open(music_path, 'wb')
 
     while True:
         chunk = bytearray(f.read(0x8000))
@@ -114,6 +119,7 @@ def dump(file_path):
     audio['artist'] = '/'.join([artist[0] for artist in meta_data['artist']])
     audio.save()
 
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) > 1:
@@ -131,4 +137,4 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
             pass
-        
+
