@@ -20,7 +20,6 @@ def unpad(s):
 
 def dump(file_path):
 
-    global audio
     core_key = binascii.a2b_hex("687A4852416D736F356B496E62617857")
     meta_key = binascii.a2b_hex("2331346C6A6B5F215C5D2630553C2728")
 
@@ -93,6 +92,10 @@ def dump(file_path):
     m.close()
     f.close()
 
+    method_name(image_data, meta_data, music_path)
+
+
+def method_name(image_data, meta_data, music_path):
     # media tag
     if meta_data['format'] == 'flac':
         audio = flac.FLAC(music_path)
@@ -113,7 +116,6 @@ def dump(file_path):
         audio.tags.add(image)
         audio.save()
         audio = mp3.EasyMP3(music_path)
-
     audio['title'] = meta_data['musicName']
     audio['album'] = meta_data['album']
     audio['artist'] = '/'.join([artist[0] for artist in meta_data['artist']])
@@ -137,4 +139,3 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
             pass
-
