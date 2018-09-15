@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun Jul 15 01:05:58 2018
-
-@author: Nzix
-"""
-
 import binascii
 import struct
 import base64
@@ -13,8 +7,23 @@ import os
 from Crypto.Cipher import AES
 from mutagen import mp3, flac, id3
 
+SPECIAL_FORMAT = '<I'
 
-def unpad(s):
+UTF_8 = 'utf-8'
+
+CONVERT_FOLDER = 'convert'
+PARENT_FOLDER = 'F:/eCloudMusic/'
+FORMAT = 'format'
+TITLE = 'title'
+ALBUM = 'album'
+ARTIST = 'artist'
+MUSIC_NAME = 'musicName'
+FLAC_TYPE = 'flac'
+MP3_TYPE = 'mp3'
+JPEG_MINE = 'image/jpeg'
+
+
+def un_pad(s):
     return s[0:-(s[-1] if type(s[-1]) == int else ord(s[-1]))]
 
 
@@ -32,13 +41,13 @@ def dump(file_path):
     # key data
     f.seek(2, 1)
     key_length = f.read(4)
-    key_length = struct.unpack('<I', bytes(key_length))[0]
+    key_length = struct.unpack(SPECIAL_FORMAT, bytes(key_length))[0]
 
     key_data = bytearray(f.read(key_length))
     key_data = bytes(bytearray([byte ^ 0x64 for byte in key_data]))
 
-    cryptor = AES.new(core_key, AES.MODE_ECB)
-    key_data = unpad(cryptor.decrypt(key_data))[17:]
+    crypter = AES.new(core_key, AES.MODE_ECB)
+    key_data = un_pad(crypter.decrypt(key_data))[17:]
     key_length = len(key_data)
 
     # key box
@@ -52,29 +61,38 @@ def dump(file_path):
 
     # meta data
     meta_length = f.read(4)
-    meta_length = struct.unpack('<I', bytes(meta_length))[0]
+    meta_length = struct.unpack(SPECIAL_FORMAT, bytes(meta_length))[0]
 
     meta_data = bytearray(f.read(meta_length))
     meta_data = bytes(bytearray([byte ^ 0x63 for byte in meta_data]))
     meta_data = base64.b64decode(meta_data[22:])
 
-    cryptor = AES.new(meta_key, AES.MODE_ECB)
-    meta_data = unpad(cryptor.decrypt(meta_data)).decode('utf-8')[6:]
+    crypter = AES.new(meta_key, AES.MODE_ECB)
+    meta_data = un_pad(crypter.decrypt(meta_data)).decode(UTF_8)[6:]
+
     meta_data = json.loads(meta_data)
 
     # crc32
-    crc32 = f.read(4)
-    struct.unpack('<I', bytes(crc32))[0]
+    f.read(4)
+    # struct.unpack(SPECIAL_FORMAT, bytes(crc32))[0]
 
     # album cover
     f.seek(5, 1)
     image_size = f.read(4)
-    image_size = struct.unpack('<I', bytes(image_size))[0]
+    image_size = struct.unpack(SPECIAL_FORMAT, bytes(image_size))[0]
     image_data = f.read(image_size)
 
     # media data
-    file_name = meta_data['artist'][0][0] + ' - ' + meta_data['musicName'] + '.' + meta_data['format']
-    music_path = os.path.join(os.path.split(file_path)[0], file_name)
+    file_name = meta_data[ARTIST][0][0] + ' - ' + meta_data[MUSIC_NAME] + '.' + meta_data[FORMAT]
+    file_name = file_name.replace('"', '')
+    music_path = os.path.join(CONVERT_FOLDER, os.path.split(file_path)[0], file_name)
+
+    if not os.path.exists(CONVERT_FOLDER):
+        os.makedirs(CONVERT_FOLDER)
+
+    if os.path.exists(music_path):
+        return
+
     m = open(music_path, 'wb')
 
     while True:
@@ -96,34 +114,35 @@ def dump(file_path):
 
 
 def method_name(image_data, meta_data, music_path):
+    audio = []
     # media tag
-    if meta_data['format'] == 'flac':
+    if meta_data[FORMAT] == FLAC_TYPE:
         audio = flac.FLAC(music_path)
-        # audio.delete()
         image = flac.Picture()
         image.type = 3
-        image.mime = 'image/jpeg'
+        image.mime = JPEG_MINE
         image.data = image_data
         audio.clear_pictures()
         audio.add_picture(image)
-    elif meta_data['format'] == 'mp3':
+    elif meta_data[FORMAT] == MP3_TYPE:
         audio = mp3.MP3(music_path)
-        # audio.delete()
         image = id3.APIC()
         image.type = 3
-        image.mime = 'image/jpeg'
+        image.mime = JPEG_MINE
         image.data = image_data
         audio.tags.add(image)
         audio.save()
         audio = mp3.EasyMP3(music_path)
-    audio['title'] = meta_data['musicName']
-    audio['album'] = meta_data['album']
-    audio['artist'] = '/'.join([artist[0] for artist in meta_data['artist']])
+
+    audio[TITLE] = meta_data[MUSIC_NAME]
+    audio[ALBUM] = meta_data[ALBUM]
+    audio[ARTIST] = os.altsep.join([artist[0] for artist in meta_data[ARTIST]])
     audio.save()
 
 
 if __name__ == '__main__':
     import sys
+    os.chdir(PARENT_FOLDER)
     if len(sys.argv) > 1:
         files = sys.argv[1:]
     else:
@@ -137,5 +156,5 @@ if __name__ == '__main__':
             dump(file_name)
             print(os.path.split(file_name)[-1])
         except Exception as e:
-            print(e)
+            print(e.__cause__)
             pass
