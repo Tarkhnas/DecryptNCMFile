@@ -11,8 +11,8 @@ SPECIAL_FORMAT = '<I'
 
 UTF_8 = 'utf-8'
 
-CONVERT_FOLDER = 'convert'
-PARENT_FOLDER = 'F:/eCloudMusic/'
+CONVERT_FOLDER = 'D:/CloudMusic/Converted'
+PARENT_FOLDER = 'D:/CloudMusic/Original'
 FORMAT = 'format'
 TITLE = 'title'
 ALBUM = 'album'
@@ -82,10 +82,12 @@ def dump(file_path):
     image_size = struct.unpack(SPECIAL_FORMAT, bytes(image_size))[0]
     image_data = f.read(image_size)
 
+
     # media data
     file_name = meta_data[ARTIST][0][0] + ' - ' + meta_data[MUSIC_NAME] + '.' + meta_data[FORMAT]
-    file_name = file_name.replace('"', '')
-    music_path = os.path.join(CONVERT_FOLDER, os.path.split(file_path)[0], file_name)
+    file_name = file_name.replace('"', '').replace('?', '').replace(':', '').replace('：', '').replace('？', '')
+    file_name = file_name.replace(',', ' ').replace('。', '').replace('~', '').replace("'", '').replace('＂', '')
+    music_path = os.path.join(CONVERT_FOLDER, file_name)
 
     if not os.path.exists(CONVERT_FOLDER):
         os.makedirs(CONVERT_FOLDER)
